@@ -46,8 +46,34 @@ lib/          types.ts (Status, Issue, STATUSES) and store.ts (in-memory Map)
 docs/         ARCHITECTURE.md
 ```
 
-Request flow: `components/Board.tsx` calls `fetch` on `app/api/**/route.ts`,
-which calls `lib/store.ts`. For the data model, business logic and known gaps,
+## Architecture
+
+```mermaid
+flowchart LR
+  subgraph Browser
+    P["app/page.tsx"] --> B["Board.tsx<br/>state, drag and drop, add form"]
+    B --> C["Column.tsx<br/>droppable, sortable"]
+    C --> I["IssueCard.tsx<br/>draggable, status select"]
+  end
+  subgraph Next.js server
+    R1["api/issues<br/>GET, POST"]
+    R2["api/issues/:id<br/>GET, PATCH, DELETE"]
+    R3["api/columns/:status/reorder<br/>PUT"]
+    S[("lib/store.ts<br/>in-memory Map, resets on restart")]
+    R1 --> S
+    R2 --> S
+    R3 --> S
+  end
+  B -- "fetch (JSON)" --> R1
+  B -- "fetch (JSON)" --> R2
+  B -- "fetch (JSON)" --> R3
+  T["lib/types.ts<br/>STATUSES"] -.-> B
+  T -.-> S
+```
+
+`Board.tsx` calls the route handlers with `fetch`. The handlers are thin: they
+parse JSON and call the store. The store is cached on `globalThis` so dev
+hot-reloads keep the data. For the data model, business logic and known gaps,
 read [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ## API
